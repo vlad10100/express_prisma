@@ -1,0 +1,178 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUMS
+enum JobType {
+  OXYLABS
+  LOCAL
+}
+
+/// @namespace("customer")
+model ActiveCustomer {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  customerId Int      @unique
+
+  // Foreign key
+  // An Active Customer can have multiple customer sites and collection jobs
+  customerSites  CustomerSite[]
+  collectionJobs CollectionJob[]
+}
+
+model CustomerSite {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  siteUrl String
+
+  ActiveCustomer   ActiveCustomer? @relation(fields: [activeCustomerId], references: [id])
+  activeCustomerId Int?
+}
+
+model CollectionJob {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name          String
+  isInitialized Boolean @default(false)
+  jobType       JobType @default(OXYLABS)
+  jobKey        String?
+
+  keyword     String
+  geoLocation String
+  domain      String
+
+  ActiveCustomer    ActiveCustomer?  @relation(fields: [activeCustomerId], references: [id])
+  activeCustomerId  Int?
+  OxylabsSchedule   OxylabsSchedule? @relation(fields: [oxylabsScheduleId], references: [id])
+  oxylabsScheduleId Int?             @unique
+
+  queryResults  QueryResult[]
+  keywordStatus KeywordStatus[]
+}
+
+model QueryResult {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  query       String
+  geoLocation String
+  domain      String
+  isProcessed Boolean @default(false)
+
+  paidResults    Json @default("{}")
+  organicResults Json @default("{}")
+
+  CollectionJob   CollectionJob? @relation(fields: [collectionJobId], references: [id])
+  collectionJobId Int?
+
+  @@index([createdAt], name: "createdAt")
+  @@index([isProcessed], name: "isProcessed")
+}
+
+model KeywordStatus {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  query          String
+  geoLocation    String
+  domain         String
+  queryTimestamp DateTime
+
+  paidResults    PaidResult[]
+  organicResults OrganicResult[]
+
+  CollectionJob   CollectionJob? @relation(fields: [collectionJobId], references: [id])
+  collectionJobId Int?
+
+  @@index([queryTimestamp], name: "queryTimestamp")
+  @@index([collectionJobId], name: "collectionJobId")
+}
+
+model PaidResult {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  position    Int
+  title       String
+  url         String
+  description String
+  data        String
+
+  KeywordStatus   KeywordStatus? @relation(fields: [keywordStatusId], references: [id])
+  keywordStatusId Int?
+}
+
+model OrganicResult {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  position    Int
+  title       String
+  url         String
+  description String
+  data        String
+
+  KeywordStatus   KeywordStatus? @relation(fields: [keywordStatusId], references: [id])
+  keywordStatusId Int?
+}
+
+model OxylabsJob {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  jobId      String @unique
+  scheduleId String
+
+  @@index([jobId], name: "jobId")
+}
+
+model OxylabsSchedule {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime?
+
+  externalScheduleId Int?
+  storageType        String?
+  storageUrl         String?
+  source             String?
+  domain             String?
+  userAgent          String?
+  cron               String?
+
+  queries      Query[]
+  geoLocations GeoLocation[]
+
+  // One to One relationship
+  collectionJob CollectionJob?
+}
+
+model Query {
+  id                Int              @id @default(autoincrement())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  OxylabsSchedule   OxylabsSchedule? @relation(fields: [oxylabsScheduleId], references: [id])
+  oxylabsScheduleId Int?
+}
+
+model GeoLocation {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  location          String
+  OxylabsSchedule   OxylabsSchedule? @relation(fields: [oxylabsScheduleId], references: [id])
+  oxylabsScheduleId Int?
+}
