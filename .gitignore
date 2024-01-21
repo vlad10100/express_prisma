@@ -1,4 +1,10 @@
-node_modules
-# Keep environment variables out of version control
+# Node.js
+node_modules/
+
+# TypeScript
+/dist/
+*.js
+*.js.map
+
+# Env variables
 .env
-./dist
